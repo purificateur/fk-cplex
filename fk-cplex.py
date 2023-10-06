@@ -1,8 +1,6 @@
 from datetime import datetime, timedelta
-from math import ceil
-import itertools
 import pandas as pd
-import copy
+from w_cplex import cplex_no_m, cplex_m, cplex_latest
 
 
 class Container:
@@ -29,7 +27,7 @@ class Barge:
                     self.departure_time + timedelta(hours=10) - container.due_time
                 ).total_seconds(),
             )
-            delay_hours += ceil(delay_seconds / 3600)
+            delay_hours += delay_seconds / 3600
 
         return delay_hours * 10
 
@@ -44,24 +42,33 @@ class Barge:
 
 
 def main():
-    # Replace 'your_file.xlsx' with the actual path to your Excel file
-    file_path = 'freight_data.xlsx'
+    file_path = "freight_data.xlsx"
 
-    # Read the Excel file into a DataFrame
+    # Read the Excel file
     df = pd.read_excel(file_path)
 
     containers = []
 
     # Loop over the rows and access the values
     for index, row in df.iterrows():
-        release_date = row['Release date'].date()
-        release_time = row['Release time']
-        due_date = row['Due date'].date()
-        due_time = row['Due time']
+        release_date = row["Release date"].date()
+        release_time = row["Release time"]
+        due_date = row["Due date"].date()
+        due_time = row["Due time"]
 
-        release_t = datetime(release_date.year, release_date.month, release_date.day, release_time.hour, release_time.minute)
-        due_t = datetime(due_date.year, due_date.month, due_date.day, due_time.hour, due_time.minute)
+        # Parse dates
+        release_t = datetime(
+            release_date.year,
+            release_date.month,
+            release_date.day,
+            release_time.hour,
+            release_time.minute,
+        )
+        due_t = datetime(
+            due_date.year, due_date.month, due_date.day, due_time.hour, due_time.minute
+        )
 
+        # Create the container and add it to the container list
         containers.append(Container(release_t, due_t))
 
     # Create barges
@@ -80,45 +87,18 @@ def main():
         ),
     ]
 
-    result = "LoL"
+    # Add containers to the barges according to the cplex result
+    for idx, container in enumerate(cplex_latest):
+        i = container.index(max(container))
+        barges[i].add_container(containers[idx])
 
-    num_containers = len(containers)
-    num_barges = 3
-    min_cost = 2**63
-    barge_capacity = 30
+    # Calculate cost per barge and add it to the final cost
+    result = 0
+    for b in barges:
+        result += b.calculate_cost()
 
-    print("Calculation started! Hold tight...")
-    start_time = datetime.now()
-
-    for assignment_tuple in itertools.product(range(num_barges), repeat=num_containers):
-        assignments = list(assignment_tuple)
-
-        for barge in barges:
-            barge.departure_time = datetime(year=1, month=1, day=1, hour=1, minute=1)
-            barge.containers = []
-
-
-        if (assignments.count(0) > barge_capacity or assignments.count(1) > barge_capacity or assignments.count(2) > barge_capacity):
-            continue
-
-        for i, assignment in enumerate(assignments):
-            barges[assignment].add_container(containers[i])
-
-        curr_cost = 0
-
-        for barge in barges:
-            curr_cost += barge.calculate_cost()
-
-        if min_cost > curr_cost:
-            result = assignments
-            min_cost = curr_cost
-
-        min_cost = min(curr_cost, min_cost)
-
-    print(f"Calculation ended! It took {datetime.now() - start_time} seconds")
-    print(min_cost)
     print(result)
-    
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
