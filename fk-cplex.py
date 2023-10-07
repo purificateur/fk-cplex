@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import pandas as pd
-from w_cplex import cplex_latest
+from w_cplex import cplex_solution
 
 
 # Class representing a container
@@ -46,8 +46,26 @@ class Barge:
 
 
 def main():
-    file_path = "freight_data.xlsx"
+    containers = parse_containers("freight_data.xlsx")
 
+    # Create barges
+    barges = [Barge(), Barge(), Barge()]
+
+    # Add containers to the barges according to the cplex result
+    for idx, container in enumerate(cplex_solution):
+        i = container.index(max(container))
+        barges[i].add_container(containers[idx])
+
+    # Calculate cost per barge and add it to the final cost (result)
+    result = 0
+    for b in barges:
+        result += b.calculate_cost()
+
+    # Print the result
+    print(result)
+
+
+def parse_containers(file_path):
     # Read the Excel file
     df = pd.read_excel(file_path)
 
@@ -59,6 +77,7 @@ def main():
         release_time = row["Release time"]
         due_date = row["Due date"].date()
         due_time = row["Due time"]
+        cluster = row[""]
 
         # Parse dates
         release_t = datetime(
@@ -79,21 +98,7 @@ def main():
         # Create the container and add it to the container list
         containers.append(Container(release_t, due_t))
 
-    # Create barges
-    barges = [Barge(), Barge(), Barge()]
-
-    # Add containers to the barges according to the cplex result
-    for idx, container in enumerate(cplex_latest):
-        i = container.index(max(container))
-        barges[i].add_container(containers[idx])
-
-    # Calculate cost per barge and add it to the final cost (result)
-    result = 0
-    for b in barges:
-        result += b.calculate_cost()
-
-    # Print the result
-    print(result)
+    return containers
 
 
 if __name__ == "__main__":
