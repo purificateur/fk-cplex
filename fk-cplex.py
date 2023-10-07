@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
 import pandas as pd
-from w_cplex import cplex_no_m, cplex_m, cplex_latest
+from w_cplex import cplex_latest
 
 
+# Class representing a container
 class Container:
     def __init__(self, release_time, due_time):
         self.release_time = release_time
@@ -12,11 +13,13 @@ class Container:
         return f"Container(release_time={self.release_time}, due_time={self.due_time})"
 
 
+# Class representing a barge
 class Barge:
-    def __init__(self, departure_time, containers):
-        self.departure_time = departure_time
-        self.containers = containers
+    def __init__(self):
+        self.departure_time = datetime(year=1, month=1, day=1, hour=1, minute=1)
+        self.containers = []
 
+    # Calculates the cost of the barge
     def calculate_cost(self):
         delay_hours = 0
 
@@ -31,6 +34,7 @@ class Barge:
 
         return delay_hours * 10
 
+    # Adds a container to the barge
     def add_container(self, container):
         self.containers.append(container)
         self.departure_time = max(container.release_time, self.departure_time)
@@ -49,8 +53,8 @@ def main():
 
     containers = []
 
-    # Loop over the rows and access the values
-    for index, row in df.iterrows():
+    # Loop over the rows and read containers
+    for idx, row in df.iterrows():
         release_date = row["Release date"].date()
         release_time = row["Release time"]
         due_date = row["Due date"].date()
@@ -65,38 +69,30 @@ def main():
             release_time.minute,
         )
         due_t = datetime(
-            due_date.year, due_date.month, due_date.day, due_time.hour, due_time.minute
+            due_date.year,
+            due_date.month,
+            due_date.day,
+            due_time.hour,
+            due_time.minute,
         )
 
         # Create the container and add it to the container list
         containers.append(Container(release_t, due_t))
 
     # Create barges
-    barges = [
-        Barge(
-            departure_time=datetime(year=1, month=1, day=1, hour=1, minute=1),
-            containers=[],
-        ),
-        Barge(
-            departure_time=datetime(year=1, month=1, day=1, hour=1, minute=1),
-            containers=[],
-        ),
-        Barge(
-            departure_time=datetime(year=1, month=1, day=1, hour=1, minute=1),
-            containers=[],
-        ),
-    ]
+    barges = [Barge(), Barge(), Barge()]
 
     # Add containers to the barges according to the cplex result
     for idx, container in enumerate(cplex_latest):
         i = container.index(max(container))
         barges[i].add_container(containers[idx])
 
-    # Calculate cost per barge and add it to the final cost
+    # Calculate cost per barge and add it to the final cost (result)
     result = 0
     for b in barges:
         result += b.calculate_cost()
 
+    # Print the result
     print(result)
 
 
