@@ -5,9 +5,10 @@ from w_cplex import cplex_solution
 
 # Class representing a container
 class Container:
-    def __init__(self, release_time, due_time):
+    def __init__(self, release_time, due_time, cluster=None):
         self.release_time = release_time
         self.due_time = due_time
+        self.cluster = cluster
 
     def __str__(self):
         return f"Container(release_time={self.release_time}, due_time={self.due_time})"
@@ -47,9 +48,17 @@ class Barge:
 
 def main():
     containers = parse_containers("freight_data.xlsx")
+    containers_1 = parse_containers("clustering_1.xlsx")
+    containers_2 = parse_containers("clustering_2.xlsx")
 
     # Create barges
     barges = [Barge(), Barge(), Barge()]
+    barges_1 = [Barge(), Barge(), Barge()]
+    barges_2 = [Barge(), Barge(), Barge()]
+
+    # Add containers to the barges according to the clusters
+    fill_barges(containers_1, barges_1)
+    fill_barges(containers_2, barges_2)
 
     # Add containers to the barges according to the cplex result
     for idx, container in enumerate(cplex_solution):
@@ -57,12 +66,14 @@ def main():
         barges[i].add_container(containers[idx])
 
     # Calculate cost per barge and add it to the final cost (result)
-    result = 0
-    for b in barges:
-        result += b.calculate_cost()
+    cplex_result = get_total_cost(barges)
+    cluster_1_result = get_total_cost(barges_1)
+    cluster_2_result = get_total_cost(barges_2)
 
-    # Print the result
-    print(result)
+    # Print the results
+    print(f"CPLEX Result: {cplex_result}")  # 7604.5
+    print(f"Clustering 1 Result: {cluster_1_result}")  # 8465.999999999998
+    print(f"Clustering 2 Result: {cluster_2_result}")  # 18369.000000000004
 
 
 def parse_containers(file_path):
@@ -77,6 +88,7 @@ def parse_containers(file_path):
         release_time = row["Release time"]
         due_date = row["Due date"].date()
         due_time = row["Due time"]
+        cluster = row["Cluster"] if "Cluster" in row else None
 
         # Parse dates
         release_t = datetime(
@@ -95,9 +107,22 @@ def parse_containers(file_path):
         )
 
         # Create the container and add it to the container list
-        containers.append(Container(release_t, due_t))
+        containers.append(Container(release_t, due_t, cluster))
 
     return containers
+
+
+def get_total_cost(barges):
+    result = 0
+    for b in barges:
+        result += b.calculate_cost()
+
+    return result
+
+
+def fill_barges(containers, barges):
+    for container in containers:
+        barges[container.cluster].add_container(container)
 
 
 if __name__ == "__main__":
