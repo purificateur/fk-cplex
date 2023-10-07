@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import pandas as pd
-from w_cplex import cplex_solution
+from cplex_solution import cplex_solution
 
 
 # Class representing a container
@@ -72,8 +72,8 @@ def main():
 
     # Print the results
     print(f"CPLEX Result: {cplex_result}")  # 7604.5
-    print(f"Clustering 1 Result: {cluster_1_result}")  # 8465.999999999998
-    print(f"Clustering 2 Result: {cluster_2_result}")  # 18369.000000000004
+    print(f"Clustering 1 Result: {cluster_1_result}")  # 8466
+    print(f"Clustering 2 Result: {cluster_2_result}")  # 18369
 
 
 def parse_containers(file_path):
