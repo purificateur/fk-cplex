@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 import pandas as pd
 from cplex_solution import cplex_solution
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
 # Class representing a container
@@ -48,32 +50,41 @@ class Barge:
 
 def main():
     containers = parse_containers("freight_data.xlsx")
-    containers_1 = parse_containers("clustering_1.xlsx")
-    containers_2 = parse_containers("clustering_2.xlsx")
+    cluster_1_containers = parse_containers("clustering_1.xlsx")
+    cluster_2_containers = parse_containers("clustering_2.xlsx")
 
     # Create barges
     barges = [Barge(), Barge(), Barge()]
-    barges_1 = [Barge(), Barge(), Barge()]
-    barges_2 = [Barge(), Barge(), Barge()]
+    cluster_1_barges = [Barge(), Barge(), Barge()]
+    cluster_2_barges = [Barge(), Barge(), Barge()]
 
     # Add containers to the barges according to the clusters
-    fill_barges(containers_1, barges_1)
-    fill_barges(containers_2, barges_2)
+    fill_barges(cluster_1_containers, cluster_1_barges)
+    fill_barges(cluster_2_containers, cluster_2_barges)
 
     # Add containers to the barges according to the cplex result
+    cplex_labels = []
     for idx, container in enumerate(cplex_solution):
         i = container.index(max(container))
+        cplex_labels.append(i)
         barges[i].add_container(containers[idx])
 
     # Calculate cost per barge and add it to the final cost (result)
     cplex_result = get_total_cost(barges)
-    cluster_1_result = get_total_cost(barges_1)
-    cluster_2_result = get_total_cost(barges_2)
+    cluster_1_result = get_total_cost(cluster_1_barges)
+    cluster_2_result = get_total_cost(cluster_2_barges)
 
     # Print the results
-    print(f"CPLEX Result: {cplex_result}")  # 7604.5
-    print(f"Clustering 1 Result: {cluster_1_result}")  # 8466
-    print(f"Clustering 2 Result: {cluster_2_result}")  # 18369
+    print(f"CPLEX Result: {cplex_result}")              # 7604.5
+    print(f"Clustering 1 Result: {cluster_1_result}")   # 8466
+    print(f"Clustering 2 Result: {cluster_2_result}")   # 18369
+
+    # Display confusion matrixes
+    generate_confusion_matrices(
+        cluster1=list(map(lambda c: c.cluster, cluster_1_containers)),
+        cluster2=list(map(lambda c: c.cluster, cluster_2_containers)),
+        cplex=cplex_labels,
+    )
 
 
 def parse_containers(file_path):
@@ -83,7 +94,7 @@ def parse_containers(file_path):
     containers = []
 
     # Loop over the rows and read containers
-    for idx, row in df.iterrows():
+    for _, row in df.iterrows():
         release_date = row["Release date"].date()
         release_time = row["Release time"]
         due_date = row["Due date"].date()
@@ -98,6 +109,7 @@ def parse_containers(file_path):
             release_time.hour,
             release_time.minute,
         )
+
         due_t = datetime(
             due_date.year,
             due_date.month,
@@ -123,6 +135,24 @@ def get_total_cost(barges):
 def fill_barges(containers, barges):
     for container in containers:
         barges[container.cluster].add_container(container)
+
+
+def generate_confusion_matrices(cluster1, cluster2, cplex):
+    def create_plot(cluster, index):
+        confusion = confusion_matrix(cplex, cluster)
+
+        cm_display = ConfusionMatrixDisplay(confusion_matrix=confusion)
+        cm_display.plot()
+
+        plt.xlabel(f"K-Means Cluster {index}")
+        plt.ylabel("CPLEX Solution")
+
+    # Create the two plots and reorder the barges in
+    # order to match it with out CPLEX allocation
+    create_plot(list(map(lambda c: 2 - c, cluster1)), 1)
+    create_plot(list(map(lambda c: 2 - c, cluster2)), 2)
+
+    plt.show()
 
 
 if __name__ == "__main__":
