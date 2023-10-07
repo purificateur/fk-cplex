@@ -77,7 +77,6 @@ def parse_containers(file_path):
         release_time = row["Release time"]
         due_date = row["Due date"].date()
         due_time = row["Due time"]
-        cluster = row[""]
 
         # Parse dates
         release_t = datetime(
